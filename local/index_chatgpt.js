@@ -52,7 +52,7 @@ async function handleEvent(event) {
   console.log(`Messages: ${messages.map((m) => m.content).join("\n")}`);
 
   let msg = '';
-  const events = await openaiClient.streamChatCompletions(deploymentId, messages, { maxTokens: 128 });
+  const events = await openaiClient.streamChatCompletions(deploymentId, messages, { maxTokens: 1000 });
   for await (const event of events) {
     for (const choice of event.choices) {
       const delta = choice.delta?.content;

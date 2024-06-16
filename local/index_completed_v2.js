@@ -9,6 +9,9 @@ const path = require('path');
 const BASE_URL = process.env.BASE_URL;
 const BASE_PUBLIC_DIR = 'public';
 
+const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
+
+
 // create LINE SDK config from env variables
 const config = {
   channelSecret: process.env.CHANNEL_SECRET,
@@ -71,46 +74,66 @@ async function handleEvent(event) {
           messages: [{
             type: 'flex',
             altText: 'item list',
-            contents: flexMsg
+            contents: flexMsg2
           }]
         });
-      } else if (event.message.text === 'quick') {
+      } else if (1) {
         //https://developers.line.biz/ja/reference/messaging-api/#quick-reply
+        const key = process.env.AZURE_OPENAI_KEY;
+        const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+        const openaiClient = new OpenAIClient(endpoint, new AzureKeyCredential(key));
+      
+        const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_NAME; // model = "deployment name".
+      
+        const messages = [
+          { role: "user", content: event.message.text },
+        ];
+      
+        console.log(`Messages: ${messages.map((m) => m.content).join("\n")}`);
+      
+        let msg = '';
+        const events = await openaiClient.streamChatCompletions(deploymentId, messages, { maxTokens: 1000 });
+        for await (const event of events) {
+          for (const choice of event.choices) {
+            const delta = choice.delta?.content;
+            if (delta !== undefined) {
+              msg　 += `${delta}`;
+              // console.log(`Chatbot: ${delta}`);
+            }
+          }
+        }
+
+        const messages2 = [
+          { role: "user", content: msg+"質問を100文字以内で要約してください。疑問文で、使用言語とエラーを人がインターネットで検索できるようにしてください。" },
+        ];
+        let msg2 = '';
+        const events2 = await openaiClient.streamChatCompletions(deploymentId, messages2, { maxTokens: 1000 });
+        for await (const event of events2) {
+          for (const choice of event.choices) {
+            const delta = choice.delta?.content;
+            if (delta !== undefined) {
+              msg2　 += `${delta}`;
+              // console.log(`Chatbot: ${delta}`);
+            }
+          }
+        }
+
+
+
+
         return client.replyMessage({
           replyToken: event.replyToken,
-          messages: [{
-            type: 'text',
-            text: 'ステッカー欲しいですか❓YesかNoで答えてください, もしくは素敵な写真送って❗️',
-            "quickReply": {
-              "items": [
-                {
-                  "type": "action",
-                  "action": {
-                    "type":"postback",
-                    "label":"Yes",
-                    "data": "sticker",
-                    "displayText":"ステッカーください❗️"
-                  }
-                },
-                {
-                  "type": "action",
-                  "action": {
-                    "type":"message",
-                    "label":"No",
-                    "text":"不要。"
-                  }
-                },
-                {
-                  "type": "action",
-                  "action": {
-                    "type": "camera",
-                    "label": "camera"
-                  }
-                }
-              ]
+          messages: [
+            {
+              type: 'text',
+              text: msg,
+            },
+            {
+              type: 'text',
+              text: msg2,
             }
-          }]
-        });
+          ]
+      });
       }
     
     } else if (event.message.type === 'image') {
@@ -366,7 +389,251 @@ const flexMsg = {
     ]
   }
 
-  
+const flexMsg2 = {
+  "type": "carousel",
+  "contents": [
+    {
+      "type": "bubble",
+      "size": "nano",
+      "header": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": "質問系統1",
+            "color": "#ffffff",
+            "align": "start",
+            "size": "md",
+            "gravity": "center"
+          },
+          {
+            "type": "text",
+            "text": "70%",
+            "color": "#ffffff",
+            "align": "start",
+            "size": "xs",
+            "gravity": "center",
+            "margin": "lg"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                  {
+                    "type": "filler"
+                  }
+                ],
+                "width": "70%",
+                "backgroundColor": "#0D8186",
+                "height": "6px"
+              }
+            ],
+            "backgroundColor": "#9FD8E36E",
+            "height": "6px",
+            "margin": "sm"
+          }
+        ],
+        "backgroundColor": "#27ACB2",
+        "paddingTop": "19px",
+        "paddingAll": "12px",
+        "paddingBottom": "16px"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+              {
+                "type": "text",
+                "text": "質問概要1",
+                "color": "#8C8C8C",
+                "size": "sm",
+                "wrap": true
+              }
+            ],
+            "flex": 1
+          }
+        ],
+        "spacing": "md",
+        "paddingAll": "12px"
+      },
+      "styles": {
+        "footer": {
+          "separator": false
+        }
+      }
+    },
+    {
+      "type": "bubble",
+      "size": "nano",
+      "header": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": "質問系統2",
+            "color": "#ffffff",
+            "align": "start",
+            "size": "md",
+            "gravity": "center"
+          },
+          {
+            "type": "text",
+            "text": "30%",
+            "color": "#ffffff",
+            "align": "start",
+            "size": "xs",
+            "gravity": "center",
+            "margin": "lg"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                  {
+                    "type": "filler"
+                  }
+                ],
+                "width": "30%",
+                "backgroundColor": "#DE5658",
+                "height": "6px"
+              }
+            ],
+            "backgroundColor": "#FAD2A76E",
+            "height": "6px",
+            "margin": "sm"
+          }
+        ],
+        "backgroundColor": "#FF6B6E",
+        "paddingTop": "19px",
+        "paddingAll": "12px",
+        "paddingBottom": "16px"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+              {
+                "type": "text",
+                "text": "質問概要2",
+                "color": "#8C8C8C",
+                "size": "sm",
+                "wrap": true
+              }
+            ],
+            "flex": 1
+          }
+        ],
+        "spacing": "md",
+        "paddingAll": "12px"
+      },
+      "styles": {
+        "footer": {
+          "separator": false
+        }
+      }
+    },
+    {
+      "type": "bubble",
+      "size": "nano",
+      "header": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": "質問系統3",
+            "color": "#ffffff",
+            "align": "start",
+            "size": "md",
+            "gravity": "center"
+          },
+          {
+            "type": "text",
+            "text": "100%",
+            "color": "#ffffff",
+            "align": "start",
+            "size": "xs",
+            "gravity": "center",
+            "margin": "lg"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                  {
+                    "type": "filler"
+                  }
+                ],
+                "width": "100%",
+                "backgroundColor": "#7D51E4",
+                "height": "6px"
+              }
+            ],
+            "backgroundColor": "#9FD8E36E",
+            "height": "6px",
+            "margin": "sm"
+          }
+        ],
+        "backgroundColor": "#A17DF5",
+        "paddingTop": "19px",
+        "paddingAll": "12px",
+        "paddingBottom": "16px"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+              {
+                "type": "text",
+                "text": "質問概要3",
+                "color": "#8C8C8C",
+                "size": "sm",
+                "wrap": true
+              }
+            ],
+            "flex": 1
+          }
+        ],
+        "spacing": "md",
+        "paddingAll": "12px"
+      },
+      "styles": {
+        "footer": {
+          "separator": false
+        }
+      }
+    }
+  ]
+}
+
+
+
 // listen on port
 const port = process.env.PORT || 7071;
 app.listen(port, () => {
